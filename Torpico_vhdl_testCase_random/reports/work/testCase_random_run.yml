@@ -1,0 +1,23 @@
+Version: "0.1"
+TestCaseName: "testCase_random"
+TestCaseFile:  "../../../testCase_random.vhd"
+TestSuiteName: "work"
+BuildName: "Torpico_vhdl_testCase_random"
+Generics:           null
+ReportsTestSuiteDirectory:  "reports/work"
+RequirementsYamlFile: ""
+AlertYamlFile: ""
+CovYamlFile: ""
+ScoreboardDict:           null
+TranscriptFiles: ""
+TestCaseFileName: "testCase_random"
+GenericNames: ""
+OsvvmSettingsInfo:
+  ReportsSubdirectory:  "reports"
+  SimulationLogFile: "logs/Torpico_vhdl_testCase_random.log"
+  SimulationHtmlLogFile: "logs/Torpico_vhdl_testCase_random_log.html"
+  RequirementsSubdirectory: ""
+  CoverageSubdirectory: ""
+  Report2CssFiles:
+    - "reports/CssOsvvmStyle.css"
+  Report2PngFile:  "reports/OsvvmLogo.png"

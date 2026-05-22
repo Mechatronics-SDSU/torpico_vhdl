@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites 
+   name="Torpico_vhdl_setup_osvvm"
+   timestamp="2026-04-02T19:59:21-07:00"
+   time="17.195"
+   tests="0"
+   failures="0"
+   errors="0"
+   skipped="0"
+>
+<properties> 
+  <property name="OsvvmVersion" value="2026.01" /> 
+  <property name="Simulator" value="GHDL" /> 
+  <property name="SimulatorVersion" value="5.1.1" /> 
+</properties> 
+</testsuites>

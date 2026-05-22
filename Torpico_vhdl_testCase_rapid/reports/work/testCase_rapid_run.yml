@@ -1,0 +1,23 @@
+Version: "0.1"
+TestCaseName: "testCase_rapid"
+TestCaseFile:  "../../../testCase_rapid.vhd"
+TestSuiteName: "work"
+BuildName: "Torpico_vhdl_testCase_rapid"
+Generics:           null
+ReportsTestSuiteDirectory:  "reports/work"
+RequirementsYamlFile: ""
+AlertYamlFile: ""
+CovYamlFile: ""
+ScoreboardDict:           null
+TranscriptFiles: ""
+TestCaseFileName: "testCase_rapid"
+GenericNames: ""
+OsvvmSettingsInfo:
+  ReportsSubdirectory:  "reports"
+  SimulationLogFile: "logs/Torpico_vhdl_testCase_rapid.log"
+  SimulationHtmlLogFile: "logs/Torpico_vhdl_testCase_rapid_log.html"
+  RequirementsSubdirectory: ""
+  CoverageSubdirectory: ""
+  Report2CssFiles:
+    - "reports/CssOsvvmStyle.css"
+  Report2PngFile:  "reports/OsvvmLogo.png"
