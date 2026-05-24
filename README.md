@@ -1,8 +1,19 @@
 # Torpico_vhdl
 
-- vhdl torpico code
+## Authors:
+Ryan Sundermeyer (GitHub: @rsunderr, Discord: .kech)
+
+## Outline:
+This directory contains the HDL code used for torpico, as well as the verification code using OSVVM.
+
+## Directories:
+- OSVVM_Temp_GHDL
+    - Contains temporary log files
+- VHDL_LIBS
+    - Contains vhdl binaries
+
+## Usage:
 - use "tclsh" to open tcl cli 
-- run "source ../OsvvmLibraries/Scripts/StartUp.tcl" (I currently have this done automatically in ~/.tclshrc)
-- run "build setup_osvvm.pro" (This analyzes/builds the osvvm libraries you need, only ever do once during setup)
-- run "build testCase_< case name >.pro" (Runs vhdl files, redo this each time you want to rerun after editing your chages)
-- run "gtkwave waves.ghw" (This will open up your waveform in gtkwave)
+- run "setup_osvvm.tcl" (sources OSVVM script and build libraries if necessary)
+- run "build testCase_< case name >.pro" (Runs vhdl test cases and opens gtkwave, redo this each time you want to rerun after editing your chages)
+- run "gtkwave waves.ghw" (This will open up your waveform in gtkwave if not already opened)
