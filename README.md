@@ -1,28 +1,29 @@
 # Torpico_vhdl
 
 ### Authors:
-Ryan Sundermeyer (GitHub: @rsunderr, Discord: .kech)
+Ryan Sundermeyer (GitHub: @rsunderr, Discord: @.kech)
 
 ### Outline:
-This directory contains the HDL code used for torpico, as well as the verification code using OSVVM.
+This directory contains the HDL source code used for torpico, as well as the verification code using OSVVM.
+The module in pwm_gen.vhd is intended to be packaged into a custom AXI Lite IP core in Vivado when complete.
 
 ### Directories:
-- OSVVM_Temp_GHDL
-    - Contains temporary log files
-- VHDL_LIBS
-    - Contains vhdl binaries
+**OSVVM_Temp_GHDL**
+Contains temporary log files.
+**VHDL_LIBS**
+Contains vhdl binaries.
 
 ### Files:
-- pwm_gen.vhd
-    - Primary module, generats a square wave based on generics and inputs, includes a stop signal
-- testCase_nominal.*
-    - nominal or best case scenario test case
-- testCase_rapid.*
-    - changes to inputs made rapidly, during a pulse
-- testCase_binary.*
-    - using pulse us of 1 or 0 for binary operation
-- testCase_random.*
-    - stress test that sends random values to input
+**pwm_gen.vhd**
+Primary module, generats a square wave based on generics and inputs, includes a stop signal.
+**testCase_nominal\***
+Nominal or best case scenario test case, sends a few different pulse widths.
+**testCase_rapid\***
+Changes to inputs made rapidly, during a pulse.
+**testCase_binary\***
+Using pulse us of 1 or 0 for binary operation.
+**testCase_random\***
+Stress test that sends random values to input.
 
 ### Usage:
 - use "tclsh" to open tcl cli 
