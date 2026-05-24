@@ -1,13 +1,16 @@
 v 4
-file "/Users/ryansundermeyer/vhdl/Torpico_vhdl/" "testCase_rapid.vhd" "cda56453db2728b0fdbd6631094735388bae2d9b" "20260411003715.334":
-  entity testcase_rapid at 1( 0) + 0 on 287;
-  architecture sim of testcase_rapid at 13( 233) + 0 on 288;
-file "/Users/ryansundermeyer/vhdl/Torpico_vhdl/" "testCase_nominal.vhd" "be96363e94e5d14868d7dc7d43259d94c2a506e0" "20260411003025.340":
-  entity testcase_nominal at 1( 0) + 0 on 279;
-  architecture sim of testcase_nominal at 13( 235) + 0 on 280;
-file "/Users/ryansundermeyer/vhdl/Torpico_vhdl/" "pwm_gen.vhd" "afe933319ceea9557784d09dbdbaf34fdca180fd" "20260411003715.160":
-  entity pwm_gen at 30( 1412) + 0 on 285;
-  architecture rtl of pwm_gen at 52( 2331) + 0 on 286;
+file "/Users/ryansundermeyer/vhdl/Torpico_vhdl/" "testCase_binary.vhd" "0da1299b378649949cb434fb097381f9e9a9d697" "20260524062242.791":
+  entity testcase_binary at 1( 0) + 0 on 361;
+  architecture sim of testcase_binary at 13( 234) + 0 on 362;
 file "/Users/ryansundermeyer/vhdl/Torpico_vhdl/" "testCase_random.vhd" "bd03adae61711fe6757e98256d248db002446ac3" "20260411003239.878":
   entity testcase_random at 1( 0) + 0 on 283;
   architecture sim of testcase_random at 14( 259) + 0 on 284;
+file "/Users/ryansundermeyer/vhdl/Torpico_vhdl/" "pwm_gen.vhd" "72cc55cde085115eb3956b2f3fd73ba2c226897c" "20260524062242.691":
+  entity pwm_gen at 28( 1049) + 0 on 359;
+  architecture rtl of pwm_gen at 48( 2046) + 0 on 360;
+file "/Users/ryansundermeyer/vhdl/Torpico_vhdl/" "testCase_nominal.vhd" "e7a771ed50135993cac21198e2e7f4098e3ca6cd" "20260523201554.567":
+  entity testcase_nominal at 1( 0) + 0 on 339;
+  architecture sim of testcase_nominal at 13( 235) + 0 on 340;
+file "/Users/ryansundermeyer/vhdl/Torpico_vhdl/" "testCase_rapid.vhd" "cda56453db2728b0fdbd6631094735388bae2d9b" "20260411003715.334":
+  entity testcase_rapid at 1( 0) + 0 on 287;
+  architecture sim of testcase_rapid at 13( 233) + 0 on 288;

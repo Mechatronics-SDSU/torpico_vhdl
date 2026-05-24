@@ -17,19 +17,18 @@ architecture sim of testCase_nominal is
     --------------------------------------------------------------------
     constant C_CLK_HZ       : integer := 50_000_000;
     constant C_BITWIDTH     : integer := 32;
-    constant C_PULSE_MODE   : boolean := true;
-    constant C_GAP_US       : integer := 1;
+    constant C_GAP_US       : integer := 1000;
 
-    constant C_RST_PW_US    : integer := 1500;
-    constant CLK_PERIOD     : time    := 20 ns;
-    constant TOLERANCE      : time    := 2 * CLK_PERIOD;
+    constant C_STOP_US    : integer := 1500;
+    constant CLK_PERIOD     : time  := 20 ns;
+    constant TOLERANCE      : time  := 2 * CLK_PERIOD;
 
     --------------------------------------------------------------------
     -- DUT signals
     --------------------------------------------------------------------
     signal tb_clk       : std_logic := '0';
     signal tb_rst_n     : std_logic := '1';
-    signal tb_en        : std_logic := '0';
+    signal tb_stop_sig  : std_logic := '0';
     signal tb_pulse_us  : std_logic_vector(C_BITWIDTH-1 downto 0) := (others => '0');
     signal tb_pwm_sig   : std_logic;
 
@@ -51,16 +50,15 @@ begin
     --------------------------------------------------------------------
     dut : entity work.pwm_gen
         generic map (
-            C_CLK_HZ        => C_CLK_HZ,
-            C_BITWIDTH      => C_BITWIDTH,
-            C_PULSE_MODE    => C_PULSE_MODE,
-            C_GAP_US        => C_GAP_US,
-            C_RST_PW_US     => C_RST_PW_US
+            C_CLK_HZ    => C_CLK_HZ,
+            C_BITWIDTH  => C_BITWIDTH,
+            C_GAP_US    => C_GAP_US,
+            C_STOP_US   => C_STOP_US
         )
         port map (
             pl_clk      => tb_clk,
             rst_n       => tb_rst_n,
-            en          => tb_en,
+            stop_sig    => tb_stop_sig,
             pulse_us    => tb_pulse_us,
             pwm_sig     => tb_pwm_sig
         );
@@ -96,7 +94,6 @@ begin
         ----------------------------------------------------------------
         -- Initial state
         ----------------------------------------------------------------
-        tb_en <= '0';
         tb_rst_n <= '1';
         set_pulse_us(tb_pulse_us, 0);
 
@@ -122,7 +119,6 @@ begin
         -- Test 1: Pulse Width 0
         ----------------------------------------------------------------
         Log( "Test 1: Pulse width set to 0", INFO);
-        tb_en <= '1';
         t_us := 0;
         set_pulse_us(tb_pulse_us, t_us);
 
@@ -141,7 +137,6 @@ begin
         t_us := 1000;
         for i in 2 to 6 loop
             Log( "NOMINAL: TEST " & integer'image(i) & ": Pulse width set to " & integer'image(t_us), INFO);
-            tb_en <= '1';
             t_us := t_us + 500;
             set_pulse_us(tb_pulse_us, t_us);
 

@@ -10,11 +10,9 @@
 -- Tool Versions: Vivado 2024.2
 -- Description: 
 -- Generates a PWM signal of a pulse width in microseconds from pulse_us input vector.
--- Can either run in pulse mode, where it only sends one pulse at a time whenever the input pulse_us changes (like
--- for Blue Robotics T200 Motors with their basic ESCs), or send a continuous square wave (like for most servos).
+-- This module sends a continuous square wave.
 -- Because motors like the T200s actually stop at 1500us not 0, the reset behavior can be set to send a specific pulse width in 
--- microseconds from C_RST_PW_US. In pulse mode, this just sends a single pulse and waits, and in square wave mode this sends a
--- continuous square wave of that pulse width as long as the reset signal is active.
+-- microseconds from C_STOP_US.
 --
 -- Dependencies: N/A
 -- 
@@ -33,11 +31,10 @@ use ieee.numeric_std.all;
 
 entity pwm_gen is
     generic (
-        C_CLK_HZ        : integer := 50_000_000;    -- input clk hz for divider
-        C_BITWIDTH      : integer := 32;            -- bitwidth
-        C_PULSE_MODE    : boolean := false;         -- mode of pwm signal (T for pulse, F for continuous square wave)
-        C_GAP_US        : integer := 100;           -- minimum gap between pulses in microseconds, only used in pulse mode
-        C_STOP_PW_US    : integer := 0              -- after receiving a reset signal, send this pulse width (or 0 for none)
+        C_CLK_HZ    : integer := 50_000_000;    -- input clk hz for divider
+        C_BITWIDTH  : integer := 32;            -- bitwidth
+        C_GAP_US    : integer := 1000;          -- minimum gap between pulses in microseconds
+        C_STOP_US   : integer := 1500           -- after receiving a reset signal, send this pulse width (or 0 for none)
     );
     port (
         pl_clk      : in std_logic;                                 -- clock signal
@@ -46,104 +43,92 @@ entity pwm_gen is
         pulse_us    : in std_logic_vector(C_BITWIDTH-1 downto 0);   -- pulse width in microseconds
         pwm_sig     : out std_logic                                 -- output signal
     );
-        
 end entity;
 
 architecture rtl of pwm_gen is
-    ----------------------------------------------------------------------------------
-    -- SIGNALS
-    ----------------------------------------------------------------------------------
+    -- constants
+    constant C_CLKS_PER_US : integer := C_CLK_HZ / 1_000_000;    -- pulse width adjustment to cycles
 
-    constant C_CLKS_PER_US  : integer   := C_CLK_HZ / 1_000_000;    -- pulse width adjustment to cycles
-    signal clk_cnt          : integer   := 0;                       -- clock counter
-    signal clk_cnt_max      : integer   := 0;                       -- clock counter max
-    signal stop_mode        : boolean   := false;                   -- flag true while sending reset pulse/continuous pwm after reset received
-    signal pwm_sig_buf      : std_logic := '0';                     -- output buffer for stability
-    signal pulse_us_buf0    : std_logic_vector(C_BITWIDTH-1 downto 0) := (others => '0'); -- input buffer 0 for stability and previous us
-    signal pulse_us_buf1    : std_logic_vector(C_BITWIDTH-1 downto 0) := (others => '0'); -- input buffer 1 for stability and previous us
+    -- states
+    type state_type is (S_HIGH, S_LOW);
+    signal state : state_type := S_LOW; -- state tracking signal
+
+    -- signals
+    signal clk_cnt          : integer   := 0;   -- clock counter
+    signal clk_cnt_max      : integer   := 0;   -- max clock count
+    signal pwm_sig_buf      : std_logic := '0'; -- output buffer
+    signal stop_flag        : std_logic := '0'; -- stop flag
+
 begin
-    process(pl_clk, rst_n) 
+    process(pl_clk, rst_n)
     begin
         ----------------------------------------------------------------------------------
         -- RESET LOGIC
         ----------------------------------------------------------------------------------
-        if rst_n = '0' then -- reset once
-            clk_cnt         <= 0;               -- keep clk at 0
-            clk_cnt_max     <= 0;               -- keep clk max at 0
-            pulse_us_buf0   <= (others => '0'); -- set input buffers to 0
-            pulse_us_buf1   <= (others => '0');
-            pwm_sig_buf     <= '0';             -- reset output buffer
-            stop_mode       <= false;           -- clear reset mode
+        if rst_n = '0' then
+            clk_cnt         <= 0;       -- keep clk at 0
+            clk_cnt_max     <= 0;       -- reset clk cnt max
+            pwm_sig_buf     <= '0';     -- reset output buffer
+            stop_flag       <= '0';     -- reset stop flag
+            state           <= S_LOW;   -- reset state
 
         ----------------------------------------------------------------------------------
         -- CLOCK LOOP
         ----------------------------------------------------------------------------------
         elsif rising_edge(pl_clk) then
-                -- assign buffers
-                pulse_us_buf0   <= pulse_us; -- double buffered input
-                pulse_us_buf1   <= pulse_us_buf0;
-
-                if not stop_mode then -- if not in stop mode, calculate clk max from input pulse width
-                    clk_cnt_max <= to_integer(unsigned(pulse_us_buf0)) * C_CLKS_PER_US; -- recalculate clk max from input
-                else -- if in reset mode, calculate clk max from reset pulse width
-                    clk_cnt_max <= C_RST_PW_US * C_CLKS_PER_US;
-                end if;
-
-                if stop_sig = '1' then -- if stop signal is high, immediately stop output and ignore input until reset
-                    stop_mode <= true; -- set reset mode to ignore input and send reset pulse
-                end if;
-
-                ----------------------------------------------------------------------------------
-                -- PULSE MODE
-                ----------------------------------------------------------------------------------
-                if C_PULSE_MODE and clk_cnt_max /= 0 then 
-                    -- create pulse
-                    if clk_cnt < clk_cnt_max - 1 then   -- count up to pulse width
-                        pwm_sig_buf <= '1';             -- output signal high during pulse
-                        clk_cnt     <= clk_cnt + 1;     -- increment counter
-                    -- wait after pulse
-                    elsif clk_cnt < clk_cnt_max + C_GAP_US * C_CLKS_PER_US - 1 then -- wait for 1 us after pulse
-                        pwm_sig_buf <= '0';                                         -- output signal low after pulse is done
-                        clk_cnt     <= clk_cnt + 1;                                 -- increment counter
-                    -- conditional restart after pules and wait done
-                    else
-                        -- clk counter reset logic
-                        if pulse_us /= pulse_us_buf1 or stop_mode then  -- restart if input pulse us changes or reset active
-                            clk_cnt <= 0;                               -- zero counter to start new pulse
-                            stop_mode <= false when stop_mode;          -- clear reset mode after starting pulse
-                        end if;
-                    end if;
+            -- set stop flag high after stop signal high
+            if stop_sig = '1' then
+                stop_flag <= '1';
+            end if;
                 
-                ----------------------------------------------------------------------------------
-                -- SQUARE WAVE MODE
-                ----------------------------------------------------------------------------------
-                elsif not C_PULSE_MODE and clk_cnt_max /= 0 then -- if not in pulse mode
-                    -- create square wave
-                    if clk_cnt < 2 * clk_cnt_max - 1 then 
-                    
-                        -- output signal low for second half of period or reset active
-                        if clk_cnt >= clk_cnt_max - 1 then --or stop_mode then 
-                            pwm_sig_buf <= '0';
+            -- binary behavior if sent a 1 or 0
+            if unsigned(pulse_us) <= 1 and stop_flag = '0' then -- branch if stop sent for safety reasons
+                pwm_sig_buf <= pulse_us(0);
+
+            -- normal PWM behavior
+            else
+                -- state machine logic
+                case state is
+                    -- signal high state
+                    when S_HIGH =>
+                        pwm_sig_buf <= '1'; -- set output signal high
+
+                        if clk_cnt >= clk_cnt_max - 1 then -- count up to pulse width us
+                            clk_cnt <= 0;       -- reset clock counter
+                            state   <= S_LOW;   -- transition to low state
                         else
-                            pwm_sig_buf <= '1'; -- output signal high for first half of period
+                            clk_cnt <= clk_cnt + 1; -- increment counter
                         end if;
-                        
-                        clk_cnt <= clk_cnt + 1; -- increment clock counter
-                    else -- reset after counter reaches period
-                        clk_cnt <= 0; -- reset clock counter
-                    end if;
-                
-                ----------------------------------------------------------------------------------
-                -- clk_cnt_max = 0 CASE
-                ----------------------------------------------------------------------------------
-                else
-                    pwm_sig_buf <= '0'; -- keep output low if pulse width is 0
-                    clk_cnt     <= 0;   -- keep clk at 0
-                end if;
+
+                    -- signal low state
+                    when S_LOW =>
+                        pwm_sig_buf <= '0'; -- set output signal low
+
+                        if clk_cnt >= C_GAP_US * C_CLKS_PER_US - 1 then 
+                            clk_cnt <= 0;
+
+                            -- assign max clock count
+                            if stop_flag = '1' then
+                                clk_cnt_max <= C_STOP_US * C_CLKS_PER_US;   -- set max clk cnt to stop us
+                                stop_flag   <= stop_sig;                    -- reset stop to low if input is low
+                            else
+                                clk_cnt_max <= to_integer(unsigned(pulse_us)) * C_CLKS_PER_US; -- typical max count from pulse us
+                            end if;
+
+                            state <= S_HIGH; -- transition to high state
+                        else
+                            clk_cnt <= clk_cnt + 1; -- increment counter
+                        end if;
+
+                    -- other state
+                    when others =>
+                        state <= S_LOW;
+                end case;
+            end if;
         end if;
     end process;
-    
-    -- concurrently assign output to buffer value
-    pwm_sig <= pwm_sig_buf; 
-    
+
+    -- assign output to buffer
+    pwm_sig <= pwm_sig_buf;
+
 end architecture;
