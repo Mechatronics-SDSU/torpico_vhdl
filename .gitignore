@@ -1,0 +1,26 @@
+# GHDL build artifacts
+*.o
+*.cf
+*.ghw
+
+# OSVVM simulation/build outputs
+*.pro
+OsvvmTemp_*/
+VHDL_LIBS/
+
+# Generated reports / indexes
+index.html
+index.yml
+
+# Local executables generated from testbenches
+testcase_binary
+testcase_nominal
+testcase_random
+testcase_rapid
+testCase_binary
+testCase_nominal
+testCase_random
+testCase_rapid
+
+# macOS
+.DS_Store
