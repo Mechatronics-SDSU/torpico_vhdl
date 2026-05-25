@@ -14,15 +14,15 @@ Contains temporary log files.
 Contains vhdl binaries.
 
 ### Files:
-**pwm_gen.vhd**
+*pwm_gen.vhd*
 Primary module, generats a square wave based on generics and inputs, includes a stop signal.
-**testCase_nominal\***
+*testCase_nominal\**
 Nominal or best case scenario test case, sends a few different pulse widths.
-**testCase_rapid\***
+*testCase_rapid\**
 Changes to inputs made rapidly, during a pulse.
-**testCase_binary\***
+*testCase_binary\**
 Using pulse us of 1 or 0 for binary operation.
-**testCase_random\***
+*testCase_random\**
 Stress test that sends random values to input.
 
 ### Usage:
