@@ -30,7 +30,13 @@ The module in pwm_gen.vhd is intended to be packaged into a custom AXI Lite IP c
     - Stress test that sends random values to input.
 
 ### Usage:
-- use "tclsh" to open tcl cli 
-- run "setup_osvvm.tcl" (sources OSVVM script and build libraries if necessary)
-- run "build testCase_< case name >.pro" (Runs vhdl test cases and opens gtkwave, redo this each time you want to rerun after editing your chages)
-- run "gtkwave waves.ghw" (This will open up your waveform in gtkwave if not already opened)
+- Use "tclsh" to open tcl cli 
+- Run "setup_osvvm.tcl" (sources OSVVM script and build libraries if necessary)
+- Run "build testCase_< case name >.pro" (Runs vhdl test cases and opens gtkwave, redo this each time you want to rerun after editing your changes)
+- Run "gtkwave waves.ghw" (This will open up your waveform in gtkwave if not already opened)
+
+### Notes:
+- This module dooes nothing on its own, must be packaged into a Vivado AXI Lite custom IP core
+
+### Status:
+In progress.
