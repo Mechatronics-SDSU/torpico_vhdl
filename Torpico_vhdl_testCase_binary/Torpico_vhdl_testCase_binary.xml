@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <testsuites 
    name="Torpico_vhdl_testCase_binary"
-   timestamp="2026-05-23T23:22:42-07:00"
-   time="1.211"
+   timestamp="2026-05-24T10:58:01-07:00"
+   time="1.329"
    tests="1"
    failures="1"
    errors="0"
@@ -15,7 +15,7 @@
 </properties> 
 <testsuite 
    name="work"
-   time="1.000"
+   time="1.120"
    tests="1"
    failures="1"
    errors="0"
@@ -25,7 +25,7 @@
    name="testCase_binary"
    classname="work"
    assertions="10"
-   time="0.984"
+   time="1.102"
 >
 <failure message="Name mismatch">Name mismatch</failure>
 </testcase>

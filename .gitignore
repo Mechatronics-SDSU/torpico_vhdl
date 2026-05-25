@@ -4,7 +4,6 @@
 *.ghw
 
 # OSVVM simulation/build outputs
-*.pro
 OsvvmTemp_*/
 VHDL_LIBS/
 
@@ -16,11 +15,7 @@ index.yml
 testcase_binary
 testcase_nominal
 testcase_random
-testcase_rapid
-testCase_binary
-testCase_nominal
-testCase_random
-testCase_rapid
+testcase_stop
 
 # macOS
 .DS_Store

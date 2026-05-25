@@ -11,19 +11,19 @@ The module in pwm_gen.vhd is intended to be packaged into a custom AXI Lite IP c
     - OSVVM
     - gtkwave
 
-### Important Directories:
+### Key Directories:
 - OSVVM_Temp_GHDL
     - Contains temporary log files.
 - VHDL_LIBS
     - Contains vhdl binaries.
 
-### Important Files:
+### Key Files:
 - pwm_gen.vhd
     - Primary module, generats a square wave based on generics and inputs, includes a stop signal.
 - testCase_nominal*
     - Nominal or best case scenario test case, sends a few different pulse widths.
-- testCase_rapid*
-    - Changes to inputs made rapidly, during a pulse.
+- testCase_stop*
+    - Uses normal pulse us and stop signal
 - testCase_binary*
     - Using pulse us of 1 or 0 for binary operation.
 - testCase_random*
