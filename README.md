@@ -3,17 +3,13 @@ This directory contains the HDL source code used for torpico, as well as the ver
 The module in pwm_gen.vhd is intended to be packaged into a custom AXI Lite IP core in Vivado when complete.
 
 ### Outline:
-```text
-Date Created: 5/22/2026
-
-Contributors:
-    Ryan Sundermeyer (GitHub: @rsunderr, Discord: @.kech)
-
-Dependencies:
-    tclsh
-    OSVVM
-    gtkwave
-```
+- Date Created: 5/22/2026
+- Contributors:
+    - Ryan Sundermeyer (GitHub: @rsunderr, Discord: @.kech)
+- Dependencies:
+    - tclsh
+    - OSVVM
+    - gtkwave
 
 ### Important Directories:
 - OSVVM_Temp_GHDL
