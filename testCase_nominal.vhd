@@ -15,11 +15,11 @@ architecture sim of testCase_nominal is
     --------------------------------------------------------------------
     -- Constants
     --------------------------------------------------------------------
-    constant C_CLK_HZ       : integer := 50_000_000;
-    constant C_BITWIDTH     : integer := 32;
-    constant C_GAP_US       : integer := 1000;
+    constant G_CLK_HZ       : integer := 50_000_000;
+    constant G_BITWIDTH     : integer := 32;
+    constant G_OUTPUT_HZ    : integer := 400;
+    constant G_STOP_US      : integer := 1500;
 
-    constant C_STOP_US    : integer := 1500;
     constant CLK_PERIOD     : time  := 20 ns;
     constant TOLERANCE      : time  := 2 * CLK_PERIOD;
 
@@ -29,7 +29,7 @@ architecture sim of testCase_nominal is
     signal tb_clk       : std_logic := '0';
     signal tb_rst_n     : std_logic := '1';
     signal tb_stop_sig  : std_logic := '0';
-    signal tb_pulse_us  : std_logic_vector(C_BITWIDTH-1 downto 0) := (others => '0');
+    signal tb_pulse_us  : std_logic_vector(G_BITWIDTH-1 downto 0) := (others => '0');
     signal tb_pwm_sig   : std_logic;
 
     --------------------------------------------------------------------
@@ -40,7 +40,7 @@ architecture sim of testCase_nominal is
         constant us_int : in integer
     ) is
     begin
-        tb_pulse_us <= std_logic_vector(to_unsigned(us_int, C_BITWIDTH));
+        tb_pulse_us <= std_logic_vector(to_unsigned(us_int, G_BITWIDTH));
     end procedure;
 
 begin
@@ -50,10 +50,10 @@ begin
     --------------------------------------------------------------------
     dut : entity work.pwm_gen
         generic map (
-            C_CLK_HZ    => C_CLK_HZ,
-            C_BITWIDTH  => C_BITWIDTH,
-            C_GAP_US    => C_GAP_US,
-            C_STOP_US   => C_STOP_US
+            G_CLK_HZ    => G_CLK_HZ,
+            G_BITWIDTH  => G_BITWIDTH,
+            G_OUTPUT_HZ => G_OUTPUT_HZ,
+            G_STOP_US   => G_STOP_US
         )
         port map (
             pl_clk      => tb_clk,
@@ -137,7 +137,7 @@ begin
         t_us := 1000;
         for i in 2 to 6 loop
             Log( "NOMINAL: TEST " & integer'image(i) & ": Pulse width set to " & integer'image(t_us), INFO);
-            t_us := t_us + 500;
+            t_us := t_us + 100;
             set_pulse_us(tb_pulse_us, t_us);
 
             -- make sure output signal goes high at some point after fully enabled

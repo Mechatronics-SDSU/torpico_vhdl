@@ -2,6 +2,9 @@
 *.o
 *.cf
 *.ghw
+*.html
+*.yml
+*.xml
 
 # OSVVM simulation/build outputs
 OsvvmTemp_*/

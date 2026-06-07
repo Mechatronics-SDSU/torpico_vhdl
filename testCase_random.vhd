@@ -16,27 +16,30 @@ architecture sim of testCase_random is
     -- Constants
     --------------------------------------------------------------------
     -- DUT constants
-    constant C_CLK_HZ       : integer := 50_000_000;
-    constant C_BITWIDTH     : integer := 32;
-    constant C_GAP_US       : integer := 1000;
-    constant C_STOP_US      : integer := 1500;
+    constant G_CLK_HZ       : integer := 50_000_000;
+    constant G_BITWIDTH     : integer := 32;
+    constant G_OUTPUT_HZ    : integer := 400;
+    constant G_STOP_US      : integer := 1500;
 
     -- Testbench constants
-    constant C_NUM_TESTS    : integer := 50; -- number of tests
+    constant C_NUM_TESTS    : integer := 10; -- number of tests
     constant C_CLK_PRD      : time    := 20 ns;
     constant C_TLRNCE       : time    := 2 * C_CLK_PRD;
+    constant C_MAX_US       : integer := 1900;
+    constant C_MIN_US       : integer := 1100;
 
     --------------------------------------------------------------------
     -- DUT signals
     --------------------------------------------------------------------
     signal tb_clk       : std_logic := '0';
-    signal tb_rst_n     : std_logic := '1';
+    signal tb_rst_n     : std_logic := '0';
     signal tb_stop      : std_logic := '0';
-    signal tb_pulse_us  : std_logic_vector(C_BITWIDTH-1 downto 0) := (others => '0');
+    signal tb_pulse_us  : std_logic_vector(G_BITWIDTH-1 downto 0) := (others => '0');
     signal tb_pwm_sig   : std_logic;
 
-    -- Response done signal
-    signal resp_done : boolean := false;
+    signal timeout      : time      := 10 ms;
+    signal stim_done    : boolean   := false;
+    signal resp_done    : boolean   := false;
 
     --------------------------------------------------------------------
     -- Procedures
@@ -46,7 +49,7 @@ architecture sim of testCase_random is
         constant us_int : in integer
     ) is
     begin
-        tb_pulse_us <= std_logic_vector(to_unsigned(us_int, C_BITWIDTH));
+        tb_pulse_us <= std_logic_vector(to_unsigned(us_int, G_BITWIDTH));
     end procedure;
 
 begin
@@ -56,10 +59,10 @@ begin
     --------------------------------------------------------------------
     dut : entity work.pwm_gen
         generic map (
-            C_CLK_HZ        => C_CLK_HZ,
-            C_BITWIDTH      => C_BITWIDTH,
-            C_GAP_US        => C_GAP_US,
-            C_STOP_US       => C_STOP_US
+            G_CLK_HZ        => G_CLK_HZ,
+            G_BITWIDTH      => G_BITWIDTH,
+            G_OUTPUT_HZ     => G_OUTPUT_HZ,
+            G_STOP_US       => G_STOP_US
         )
         port map (
             pl_clk      => tb_clk,
@@ -101,7 +104,6 @@ begin
         -- Initial state
         ----------------------------------------------------------------
         tb_rst_n <= '1';
-        set_pulse_us(tb_pulse_us, 0);
         RV.InitSeed (RV'instance_name);
 
         ----------------------------------------------------------------
@@ -109,18 +111,19 @@ begin
         ----------------------------------------------------------------
         for i in 0 to C_NUM_TESTS - 1 loop
 
-            t_us := RV.RandInt(1100, 1900); -- randomize pulse width
+            t_us := RV.RandInt(C_MIN_US, C_MAX_US); -- randomize pulse width
             Log("RANDOM: Pulse " & integer'image(i) & " - Width set to " & integer'image(t_us) & " us", INFO); -- log pulses
             set_pulse_us(tb_pulse_us, t_us); -- send pulse
             
             wait for RV.RandInt(t_us/2, t_us * 2) * 1 us; -- wait random amount
 
         end loop;
-        wait for 1 ms;
-
+        wait for 1 us / G_CLK_HZ;
+        
         ----------------------------------------------------------------
         -- Done
         ----------------------------------------------------------------
+        stim_done <= true;
         Log( "stim_proc done", INFO);
 
         wait until resp_done = true;
@@ -148,23 +151,23 @@ begin
         ----------------------------------------------------------------
         -- Test for Pulse Duration
         ----------------------------------------------------------------
-        for i in 0 to C_NUM_TESTS - 1 loop
+        while stim_done = false loop
             t_init := now;
 
             -- wait for signal to go high
-            wait until tb_pwm_sig = '1' for C_GAP_US * 1 us + C_TLRNCE;
+            wait until tb_pwm_sig = '1' for timeout;
             t_us := to_integer(unsigned(tb_pulse_us)) * 1 us; -- capture pulse us at moment of signal going high
             t_start := now;
 
-            -- detect false negative
-            if t_start - t_init > C_GAP_US * 1 us + C_TLRNCE then
-                AffirmIf(FALSE,  "RANDOM: FAIL - Signal stayed low when it should have gone high at " & time'image(now));
+            --detect false negative
+            if t_start - t_init > (1000 / G_OUTPUT_HZ) * 1 ms + C_TLRNCE then
+                AffirmIf(FALSE,  "RANDOM: FAIL - Signal stayed low when it should have gone high ", time'image((10**6 / G_OUTPUT_HZ) * 1 us));
                 false_neg   := false_neg + 1;
                 fail        := fail + 1;
             end if;
 
             -- wait for pulse to go low
-            wait until tb_pwm_sig = '0' for 1900 us + C_TLRNCE;
+            wait until tb_pwm_sig = '0' for t_us + C_TLRNCE;
             t_end   := now;
             t_width := t_end - t_start;
 

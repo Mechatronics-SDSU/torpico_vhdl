@@ -16,10 +16,10 @@ architecture sim of testCase_stop is
     -- Constants
     --------------------------------------------------------------------
     -- DUT constants
-    constant C_CLK_HZ       : integer := 50_000_000;
-    constant C_BITWIDTH     : integer := 32;
-    constant C_GAP_US       : integer := 1000;
-    constant C_STOP_US      : integer := 1000;
+    constant G_CLK_HZ       : integer := 50_000_000;
+    constant G_BITWIDTH     : integer := 32;
+    constant G_GAP_US       : integer := 1000;
+    constant G_STOP_US      : integer := 1000;
 
     -- Testbench constants
     constant C_NUM_TESTS    : integer := 10; -- number of tests
@@ -33,7 +33,7 @@ architecture sim of testCase_stop is
     signal tb_clk       : std_logic := '0';
     signal tb_rst_n     : std_logic := '1';
     signal tb_stop      : std_logic := '0';
-    signal tb_pulse_us  : std_logic_vector(C_BITWIDTH-1 downto 0) := (others => '0');
+    signal tb_pulse_us  : std_logic_vector(G_BITWIDTH-1 downto 0) := (others => '0');
     signal tb_pwm_sig   : std_logic;
 
     -- Response done signal
@@ -47,7 +47,7 @@ architecture sim of testCase_stop is
         constant us_int : in integer
     ) is
     begin
-        tb_pulse_us <= std_logic_vector(to_unsigned(us_int, C_BITWIDTH));
+        tb_pulse_us <= std_logic_vector(to_unsigned(us_int, G_BITWIDTH));
     end procedure;
 
 begin
@@ -57,10 +57,10 @@ begin
     --------------------------------------------------------------------
     dut : entity work.pwm_gen
         generic map (
-            C_CLK_HZ        => C_CLK_HZ,
-            C_BITWIDTH      => C_BITWIDTH,
-            C_GAP_US        => C_GAP_US,
-            C_STOP_US       => C_STOP_US
+            G_CLK_HZ        => G_CLK_HZ,
+            G_BITWIDTH      => G_BITWIDTH,
+            G_GAP_US        => G_GAP_US,
+            G_STOP_US       => G_STOP_US
         )
         port map (
             pl_clk      => tb_clk,
@@ -153,31 +153,31 @@ begin
             t_init := now;
 
             -- wait for signal to go high
-            wait until tb_pwm_sig = '1';-- for C_GAP_US * 1 us + C_TLRNCE;
+            wait until tb_pwm_sig = '1';-- for G_GAP_US * 1 us + C_TLRNCE;
             t_us := to_integer(unsigned(tb_pulse_us)) * 1 us; -- capture pulse us at moment of signal going high
             t_start := now;
 
             -- detect false negative
-            if t_start - t_init > C_GAP_US * 1 us + C_TLRNCE then
+            if t_start - t_init > G_GAP_US * 1 us + C_TLRNCE then
                 AffirmIf(FALSE,  "STOP: FAIL - Signal stayed low when it should have gone high at " & time'image(now));
                 false_neg   := false_neg + 1;
                 fail        := fail + 1;
             end if;
 
             -- wait for pulse to go low
-            wait until tb_pwm_sig = '0';-- for C_PULSE_US * 1 us + C_TLRNCE;
+            wait until tb_pwm_sig = '0' for C_PULSE_US * 1 us + C_TLRNCE;
             t_end   := now;
             t_width := t_end - t_start;
             
             -- stop mode operation
             if tb_stop = '1' then
                 -- pass
-                if t_width >= C_STOP_US * 1 us - C_TLRNCE and t_width <= C_STOP_US * 1 us + C_TLRNCE then
+                if t_width >= G_STOP_US * 1 us - C_TLRNCE and t_width <= G_STOP_US * 1 us + C_TLRNCE then
                     AffirmIf(TRUE,
                         "STOP: PASS - Signal stayed high for " &
                         integer'image(t_width / 1 us) &
-                        " when stop signal high and C_STOP_US = " &
-                        integer'image(C_STOP_US)
+                        " when stop signal high and G_STOP_US = " &
+                        integer'image(G_STOP_US)
                     );
                     pass := pass + 1;
                 -- fail
@@ -185,8 +185,8 @@ begin
                     AffirmIf(FALSE,
                         "STOP: FAIL - Signal stayed high for " &
                         integer'image(t_width / 1 us) &
-                        " when stop signal high and C_STOP_US = " &
-                        integer'image(C_STOP_US)
+                        " when stop signal high and G_STOP_US = " &
+                        integer'image(G_STOP_US)
                     );
                     pass := pass + 1;
                 end if;
