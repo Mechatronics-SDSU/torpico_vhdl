@@ -18,26 +18,29 @@ architecture sim of testCase_stop is
     -- DUT constants
     constant G_CLK_HZ       : integer := 50_000_000;
     constant G_BITWIDTH     : integer := 32;
-    constant G_GAP_US       : integer := 1000;
-    constant G_STOP_US      : integer := 1000;
+    constant G_OUTPUT_HZ    : integer := 400;
+    constant G_STOP_US      : integer := 1500;
 
     -- Testbench constants
-    constant C_NUM_TESTS    : integer := 10; -- number of tests
-    constant C_PULSE_US     : integer := 2000;
+    constant C_NUM_TESTS    : integer := 25; -- number of tests
     constant C_CLK_PRD      : time    := 20 ns;
     constant C_TLRNCE       : time    := 2 * C_CLK_PRD;
+    constant C_MAX_US       : integer := 1900;
+    constant C_MIN_US       : integer := 1100;
+    constant C_TESTNAME     : string  := "testCase_stop";
 
     --------------------------------------------------------------------
     -- DUT signals
     --------------------------------------------------------------------
     signal tb_clk       : std_logic := '0';
-    signal tb_rst_n     : std_logic := '1';
+    signal tb_rst_n     : std_logic := '0';
     signal tb_stop      : std_logic := '0';
     signal tb_pulse_us  : std_logic_vector(G_BITWIDTH-1 downto 0) := (others => '0');
     signal tb_pwm_sig   : std_logic;
 
-    -- Response done signal
-    signal resp_done : boolean := false;
+    signal timeout      : time      := 3 ms;
+    signal stim_done    : boolean   := false;
+    signal resp_done    : boolean   := false;
 
     --------------------------------------------------------------------
     -- Procedures
@@ -59,7 +62,7 @@ begin
         generic map (
             G_CLK_HZ        => G_CLK_HZ,
             G_BITWIDTH      => G_BITWIDTH,
-            G_GAP_US        => G_GAP_US,
+            G_OUTPUT_HZ     => G_OUTPUT_HZ,
             G_STOP_US       => G_STOP_US
         )
         port map (
@@ -88,6 +91,7 @@ begin
     --------------------------------------------------------------------
     stim_proc : process
         variable RV         : RandomPType;
+        variable t_us       : integer   := 0;
         variable t_start    : time      := 0 ns;
         variable t_end      : time      := 0 ns;
     begin
@@ -101,27 +105,43 @@ begin
         -- Initial state
         ----------------------------------------------------------------
         tb_rst_n <= '1';
-        set_pulse_us(tb_pulse_us, 0);
         RV.InitSeed (RV'instance_name);
 
         ----------------------------------------------------------------
         -- STOP Test
         ----------------------------------------------------------------
         for i in 0 to C_NUM_TESTS - 1 loop
-            tb_stop <= '1' when RV.RandInt(0, 4) = 4 else '0';
 
-            Log("STOP: Pulse " & integer'image(i) & " - Width set to " & integer'image(C_PULSE_US) & " us", INFO); -- log pulses
-            set_pulse_us(tb_pulse_us, C_PULSE_US); -- send pulse
-            
-            wait for RV.RandInt(C_PULSE_US/2, C_PULSE_US * 2) * 1 us;
-            tb_stop <= '0';
+            -- send stop signal occasionally
+            if i mod 3 = 0 then
+                tb_stop <= '1';
+                Log(C_TESTNAME & ": Set stop_sig=1", INFO);
+            end if;
+
+            t_us := RV.RandInt(C_MIN_US, C_MAX_US); -- randomize pulse width
+            Log(C_TESTNAME & ": Set pulse_us=" & integer'image(t_us) & " us", INFO); -- log pulses
+            set_pulse_us(tb_pulse_us, t_us); -- send pulse
+
+            -- reset after stop signal
+            if tb_stop = '1' then
+                wait until tb_pwm_sig = '0' for G_STOP_US * 1 us + C_TLRNCE; -- wait for signal to go low to not break with reset
+                Log(C_TESTNAME & ": Set stop_sig=0, rst_n=0", INFO);
+                tb_stop <= '0';
+                tb_rst_n <= '0';
+                wait for 2 * C_CLK_PRD;
+                Log(C_TESTNAME & ": Set rst_n=1", INFO);
+                tb_rst_n <= '1';
+            else
+                wait for RV.RandInt(t_us/2, t_us * 2) * 1 us; -- wait random amount
+            end if;
 
         end loop;
-        wait for 1 ms;
-
+        wait for 1 us / G_CLK_HZ;
+        
         ----------------------------------------------------------------
         -- Done
         ----------------------------------------------------------------
+        stim_done <= true;
         Log( "stim_proc done", INFO);
 
         wait until resp_done = true;
@@ -134,8 +154,7 @@ begin
     -- Response
     --------------------------------------------------------------------
     resp_proc : process
-        variable t_us       : time := 0 ns; -- pulse us
-        variable t_init     : time := 0 ns; -- initial loop time stamp
+        variable t_expected       : time := 0 ns; -- expected pulse width
         variable t_start    : time := 0 ns; -- start of pulse time stamp
         variable t_end      : time := 0 ns; -- end of pulse time stamp
         variable t_width    : time := 0 ns; -- width of pulse
@@ -145,86 +164,87 @@ begin
         variable long       : integer := 0; -- high too long
         variable fail       : integer := 0; -- number of fails (incorrect duration or false neg)
         variable false_neg  : integer := 0; -- should be high while low
+
+        variable pulse_us_was : integer     := 0; -- pulse_us at moment of signal going high
+        variable stop_sig_was : std_logic   := '0'; -- stop_sig at moment of signal going high
     begin
         ----------------------------------------------------------------
-        -- Test for Pulse Duration
+        -- Response Loop
         ----------------------------------------------------------------
-        for i in 0 to C_NUM_TESTS - 1 loop
-            t_init := now;
+        resp_loop: while stim_done = false loop
+            -- initialize loop
+            t_end := now; -- reset end time
+            wait until tb_pwm_sig = '1' or tb_rst_n = '0' for timeout; -- wait for output high
+            
+            ----------------------------------------------------------------
+            -- Test Signals At Moment of Output Going High
+            ----------------------------------------------------------------
+            -- check for reset
+            if tb_rst_n = '0' then
+                next resp_loop; -- restart loop
+            end if;
 
-            -- wait for signal to go high
-            wait until tb_pwm_sig = '1';-- for G_GAP_US * 1 us + C_TLRNCE;
-            t_us := to_integer(unsigned(tb_pulse_us)) * 1 us; -- capture pulse us at moment of signal going high
-            t_start := now;
+            -- capture signals at moment of output going high
+            pulse_us_was    := to_integer(unsigned(tb_pulse_us)); -- capture pulse_us at moment of signal going high
+            stop_sig_was    := tb_stop; -- capture stop_sig at moment of signal going high
+            t_expected      := pulse_us_was * 1 us when tb_stop = '0' else G_STOP_US * 1 us; -- capture pulse us at moment of signal going high
+            t_start         := now;
 
-            -- detect false negative
-            if t_start - t_init > G_GAP_US * 1 us + C_TLRNCE then
-                AffirmIf(FALSE,  "STOP: FAIL - Signal stayed low when it should have gone high at " & time'image(now));
+            -- detect false negative after a timeout
+            if t_start - t_end > (10**6 / G_OUTPUT_HZ) * 1 us + C_TLRNCE then
+                AffirmIf(FALSE,  C_TESTNAME & ": FAIL - false neg, gap=" & time'image(t_start - t_end));
                 false_neg   := false_neg + 1;
                 fail        := fail + 1;
             end if;
 
             -- wait for pulse to go low
-            wait until tb_pwm_sig = '0' for C_PULSE_US * 1 us + C_TLRNCE;
+            wait until tb_pwm_sig = '0' for t_expected + C_TLRNCE;
+
+            -- check for reset
+            if tb_rst_n = '0' then
+                next resp_loop; -- restart loop
+            end if;
+
             t_end   := now;
             t_width := t_end - t_start;
-            
-            -- stop mode operation
-            if tb_stop = '1' then
-                -- pass
-                if t_width >= G_STOP_US * 1 us - C_TLRNCE and t_width <= G_STOP_US * 1 us + C_TLRNCE then
-                    AffirmIf(TRUE,
-                        "STOP: PASS - Signal stayed high for " &
-                        integer'image(t_width / 1 us) &
-                        " when stop signal high and G_STOP_US = " &
-                        integer'image(G_STOP_US)
-                    );
-                    pass := pass + 1;
-                -- fail
-                else
-                    AffirmIf(FALSE,
-                        "STOP: FAIL - Signal stayed high for " &
-                        integer'image(t_width / 1 us) &
-                        " when stop signal high and G_STOP_US = " &
-                        integer'image(G_STOP_US)
-                    );
-                    pass := pass + 1;
-                end if;
-            -- normal operation
-            else
-                -- pass
-                if t_width >= t_us - C_TLRNCE and t_width <= t_us + C_TLRNCE then
-                    AffirmIf(TRUE,
-                        "STOP: PASS - Signal stayed high for " &
-                        integer'image(t_width / 1 us) &
-                        " when pulse_us = " &
-                        integer'image(t_us / 1 us)
-                    );
-                    pass := pass + 1;
 
-                -- short
-                elsif t_width < t_us - C_TLRNCE then
-                    AffirmIf(FALSE, "STOP: FAIL - Short, Signal stayed high for incorrect duration " 
-                        & integer'image((t_end - t_start) / 1 us) & 
-                        " us when pulse_us = " & integer'image(t_us / 1 us) & 
-                        " us, gap = " & 
-                        integer'image((t_us - t_width) / 1 us)
-                    );
-                    short   := short + 1;
-                    fail    := fail + 1;
+            -- pass
+            if t_width >= t_expected - C_TLRNCE and t_width <= t_expected + C_TLRNCE then
+                AffirmIf(TRUE,
+                    C_TESTNAME & ": PASS - pwm_sig high for " &
+                    integer'image(t_width / 1 us) &
+                    " when pulse_us was " &
+                    integer'image(pulse_us_was) &
+                    ", stop_sig was " & 
+                    std_logic'image(stop_sig_was)
+                );
+                pass := pass + 1;
 
-                -- long
-                elsif t_width > t_us + C_TLRNCE then
-                    AffirmIf(FALSE, "STOP: FAIL - Long, Signal stayed high for incorrect duration " & 
-                        integer'image((t_end - t_start) / 1 us) & 
-                        " when pulse_us = " & 
-                        integer'image(t_us / 1 us) & 
-                        ", gap = " & 
-                        integer'image((t_us - t_width) / 1 us)
-                    );
-                    long := long + 1;
-                    fail := fail + 1;
-                end if;
+            -- short
+            elsif t_width < t_expected - C_TLRNCE then
+                AffirmIf(FALSE, C_TESTNAME & ": FAIL - Short, pwm_sig high for " 
+                    & integer'image((t_end - t_start) / 1 us) & 
+                    " us when pulse_us was " & integer'image(pulse_us_was) & 
+                    " us, gap=" & 
+                    integer'image((t_expected - t_width) / 1 us)  &
+                    ", stop_sig was " & 
+                    std_logic'image(stop_sig_was)
+                );
+                short   := short + 1;
+                fail    := fail + 1;
+
+            -- long
+            elsif t_width > t_expected + C_TLRNCE then
+                AffirmIf(FALSE, C_TESTNAME & ": FAIL - Long, pwm_sig high for " & 
+                    integer'image((t_end - t_start) / 1 us) & 
+                    " when pulse_us was " & integer'image(pulse_us_was) & 
+                    " us, gap=" & 
+                    integer'image((t_expected - t_width) / 1 us) &
+                    ", stop_sig was " & 
+                    std_logic'image(stop_sig_was)
+                );
+                long := long + 1;
+                fail := fail + 1;
             end if;
             wait for 0 ns;
 

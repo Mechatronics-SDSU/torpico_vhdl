@@ -31,7 +31,7 @@ The module in pwm_gen.vhd is intended to be packaged into a custom AXI Lite IP c
 
 ### Usage:
 - Use "tclsh" to open tcl cli 
-- Run "setup_osvvm.tcl" (sources OSVVM script and build libraries if necessary)
+- Run "source setup_osvvm.tcl" (sources OSVVM script and build libraries if necessary)
 - Run "build testCase_< case name >.pro" (Runs vhdl test cases and opens gtkwave, redo this each time you want to rerun after editing your changes)
 - Run "gtkwave waves.ghw" (This will open up your waveform in gtkwave if not already opened)
 
