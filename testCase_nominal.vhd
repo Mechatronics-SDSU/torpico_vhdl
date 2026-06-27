@@ -22,6 +22,7 @@ architecture sim of testCase_nominal is
 
     constant CLK_PERIOD     : time  := 20 ns;
     constant TOLERANCE      : time  := 2 * CLK_PERIOD;
+    constant C_TESTNAME     : string  := "testCase_nominal";
 
     --------------------------------------------------------------------
     -- DUT signals
@@ -89,7 +90,7 @@ begin
         SetLogEnable(PASSED, TRUE);
         SetLogEnable(DEBUG, TRUE);
 
-        Log("Starting tb_pwm_gen", INFO);
+        Log(C_TESTNAME & ": Starting tb_pwm_gen", INFO);
 
         ----------------------------------------------------------------
         -- Initial state
@@ -102,7 +103,7 @@ begin
         ----------------------------------------------------------------
         -- Test 0: Disabled
         ----------------------------------------------------------------
-        Log( "Test 0: Disabled output low", INFO);
+        Log( C_TESTNAME & ": Test 0 - Disabled output low", INFO);
         t_us := 100;
         set_pulse_us(tb_pulse_us, t_us);
 
@@ -110,15 +111,15 @@ begin
         wait until tb_pwm_sig = '1' for 1 ms;
         wait for 0 ns;
         if tb_pwm_sig = '0' then
-            AffirmIf(TRUE,  "NOMINAL:    TEST 0 PASSED, Signal stayed low during disable period");
+            AffirmIf(TRUE,  C_TESTNAME & ":    TEST 0 PASSED, Signal stayed low during disable period");
         else
-            AffirmIf(FALSE, "NOMINAL:    TEST 0 FAILED, Signal went high during disable period");
+            AffirmIf(FALSE, C_TESTNAME & ":    TEST 0 FAILED, Signal went high during disable period");
         end if;
 
         ----------------------------------------------------------------
         -- Test 1: Pulse Width 0
         ----------------------------------------------------------------
-        Log( "Test 1: Pulse width set to 0", INFO);
+        Log( C_TESTNAME & ": Test 1: Pulse width set to 0", INFO);
         t_us := 0;
         set_pulse_us(tb_pulse_us, t_us);
 
@@ -126,9 +127,9 @@ begin
         wait until tb_pwm_sig = '1' for 1 ms;
         wait for 0 ns;
         if tb_pwm_sig = '0' then
-            AffirmIf(TRUE,  "NOMINAL: TEST 1 PASSED, Signal stayed low when pulse_us = 0");
+            AffirmIf(TRUE,  C_TESTNAME & ":    TEST 1 PASSED, Signal stayed low when pulse_us = 0");
         else
-            AffirmIf(FALSE, "NOMINAL: TEST 1 FAILED, Signal went high when pulse_us = 0");
+            AffirmIf(FALSE, C_TESTNAME & ":    TEST 1 FAILED, Signal went high when pulse_us = 0");
         end if;
 
         ----------------------------------------------------------------
@@ -136,7 +137,7 @@ begin
         ----------------------------------------------------------------
         t_us := 1000;
         for i in 2 to 6 loop
-            Log( "NOMINAL: TEST " & integer'image(i) & ": Pulse width set to " & integer'image(t_us), INFO);
+            Log( C_TESTNAME & ": TEST " & integer'image(i) & ": Pulse width set to " & integer'image(t_us), INFO);
             t_us := t_us + 100;
             set_pulse_us(tb_pulse_us, t_us);
 
@@ -146,9 +147,9 @@ begin
             wait until tb_pwm_sig = '0' for t_us * 1 us + TOLERANCE;
             t_end := now;
             if t_end - t_start >= t_us * 1 us - TOLERANCE and t_end - t_start <= t_us * 1 us + TOLERANCE then
-                AffirmIf(TRUE,  "NOMINAL: TEST " & integer'image(i) & " PASSED, Signal stayed high for correct duration when pulse_us = " & integer'image(t_us));
+                AffirmIf(TRUE,  C_TESTNAME & ":    TEST " & integer'image(i) & " PASSED, Signal stayed high for correct duration when pulse_us = " & integer'image(t_us));
             else
-                AffirmIf(FALSE, "NOMINAL: TEST " & integer'image(i) & " FAILED, Signal stayed high for incorrect duration when pulse_us = " & integer'image(t_us));
+                AffirmIf(FALSE, C_TESTNAME & ":    TEST " & integer'image(i) & " FAILED, Signal stayed high for incorrect duration when pulse_us = " & integer'image(t_us));
             end if;
 
             wait for t_gap;
@@ -160,7 +161,7 @@ begin
         ----------------------------------------------------------------
         -- Done
         ----------------------------------------------------------------
-        Log( "All tests completed", INFO);
+        Log( C_TESTNAME & ": All tests completed", INFO);
 
         EndOfTestReports;
         stop;

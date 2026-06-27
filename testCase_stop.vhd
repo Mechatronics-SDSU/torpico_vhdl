@@ -99,7 +99,7 @@ begin
         SetLogEnable(PASSED, TRUE);
         SetLogEnable(DEBUG, TRUE);
 
-        Log("Starting tb_pwm_gen", INFO);
+        Log(C_TESTNAME & ": Starting tb_pwm_gen", INFO);
 
         ----------------------------------------------------------------
         -- Initial state
@@ -154,7 +154,7 @@ begin
     -- Response
     --------------------------------------------------------------------
     resp_proc : process
-        variable t_expected       : time := 0 ns; -- expected pulse width
+        variable t_expected : time := 0 ns; -- expected pulse width
         variable t_start    : time := 0 ns; -- start of pulse time stamp
         variable t_end      : time := 0 ns; -- end of pulse time stamp
         variable t_width    : time := 0 ns; -- width of pulse
@@ -205,6 +205,9 @@ begin
                 next resp_loop; -- restart loop
             end if;
 
+            ----------------------------------------------------------------
+            -- Verify Pulse Width
+            ----------------------------------------------------------------
             t_end   := now;
             t_width := t_end - t_start;
 
@@ -250,8 +253,11 @@ begin
 
         end loop;
 
+        ----------------------------------------------------------------
+        -- Print Test Results
+        ----------------------------------------------------------------
         wait for 1 ms;
-        Log("RESULTS: pass: " & integer'image(pass) &
+        Log(C_TESTNAME & ": RESULTS - pass: " & integer'image(pass) &
         ", fail: " & integer'image(fail) &
         ", short: " & integer'image(short) &
         ", long: " & integer'image(long) &

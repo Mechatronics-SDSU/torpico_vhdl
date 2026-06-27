@@ -22,11 +22,12 @@ architecture sim of testCase_random is
     constant G_STOP_US      : integer := 1500;
 
     -- Testbench constants
-    constant C_NUM_TESTS    : integer := 10; -- number of tests
+    constant C_NUM_TESTS    : integer := 200; -- number of tests
     constant C_CLK_PRD      : time    := 20 ns;
     constant C_TLRNCE       : time    := 2 * C_CLK_PRD;
     constant C_MAX_US       : integer := 1900;
     constant C_MIN_US       : integer := 1100;
+    constant C_TESTNAME     : string  := "testCase_random";
 
     --------------------------------------------------------------------
     -- DUT signals
@@ -37,7 +38,7 @@ architecture sim of testCase_random is
     signal tb_pulse_us  : std_logic_vector(G_BITWIDTH-1 downto 0) := (others => '0');
     signal tb_pwm_sig   : std_logic;
 
-    signal timeout      : time      := 10 ms;
+    signal timeout      : time      := 3 ms;
     signal stim_done    : boolean   := false;
     signal resp_done    : boolean   := false;
 
@@ -98,7 +99,7 @@ begin
         SetLogEnable(PASSED, TRUE);
         SetLogEnable(DEBUG, TRUE);
 
-        Log("Starting tb_pwm_gen", INFO);
+        Log(C_TESTNAME & ": Starting tb_pwm_gen", INFO);
 
         ----------------------------------------------------------------
         -- Initial state
@@ -112,7 +113,7 @@ begin
         for i in 0 to C_NUM_TESTS - 1 loop
 
             t_us := RV.RandInt(C_MIN_US, C_MAX_US); -- randomize pulse width
-            Log("RANDOM: Pulse " & integer'image(i) & " - Width set to " & integer'image(t_us) & " us", INFO); -- log pulses
+            Log(C_TESTNAME & ": Set pulse_us=" & integer'image(t_us) & " us", INFO); -- log pulses
             set_pulse_us(tb_pulse_us, t_us); -- send pulse
             
             wait for RV.RandInt(t_us/2, t_us * 2) * 1 us; -- wait random amount
@@ -124,7 +125,7 @@ begin
         -- Done
         ----------------------------------------------------------------
         stim_done <= true;
-        Log( "stim_proc done", INFO);
+        Log( C_TESTNAME & ": stim_proc done", INFO);
 
         wait until resp_done = true;
         EndOfTestReports;
@@ -136,8 +137,6 @@ begin
     -- Response
     --------------------------------------------------------------------
     resp_proc : process
-        variable t_us       : time := 0 ns; -- pulse us
-        variable t_init     : time := 0 ns; -- initial loop time stamp
         variable t_start    : time := 0 ns; -- start of pulse time stamp
         variable t_end      : time := 0 ns; -- end of pulse time stamp
         variable t_width    : time := 0 ns; -- width of pulse
@@ -147,59 +146,78 @@ begin
         variable long       : integer := 0; -- high too long
         variable fail       : integer := 0; -- number of fails (incorrect duration or false neg)
         variable false_neg  : integer := 0; -- should be high while low
+
+        variable pulse_us_was : integer     := 0; -- pulse_us at moment of signal going high
     begin
         ----------------------------------------------------------------
-        -- Test for Pulse Duration
+        -- Response Loop
         ----------------------------------------------------------------
-        while stim_done = false loop
-            t_init := now;
+        resp_loop: while stim_done = false loop
+            -- initialize loop
+            t_end := now; -- reset end time
+            wait until tb_pwm_sig = '1' or tb_rst_n = '0' for timeout; -- wait for output high
+            
+            ----------------------------------------------------------------
+            -- Test Signals At Moment of Output Going High
+            ----------------------------------------------------------------
+            -- check for reset
+            if tb_rst_n = '0' then
+                next resp_loop; -- restart loop
+            end if;
 
-            -- wait for signal to go high
-            wait until tb_pwm_sig = '1' for timeout;
-            t_us := to_integer(unsigned(tb_pulse_us)) * 1 us; -- capture pulse us at moment of signal going high
-            t_start := now;
+            -- capture signals at moment of output going high
+            pulse_us_was    := to_integer(unsigned(tb_pulse_us)); -- capture pulse_us at moment of signal going high
+            t_start         := now;
 
-            --detect false negative
-            if t_start - t_init > (1000 / G_OUTPUT_HZ) * 1 ms + C_TLRNCE then
-                AffirmIf(FALSE,  "RANDOM: FAIL - Signal stayed low when it should have gone high ", time'image((10**6 / G_OUTPUT_HZ) * 1 us));
+            -- detect false negative after a timeout
+            if t_start - t_end > (10**6 / G_OUTPUT_HZ) * 1 us + C_TLRNCE then
+                AffirmIf(FALSE,  C_TESTNAME & ": FAIL - false neg, gap=" & time'image(t_start - t_end));
                 false_neg   := false_neg + 1;
                 fail        := fail + 1;
             end if;
 
             -- wait for pulse to go low
-            wait until tb_pwm_sig = '0' for t_us + C_TLRNCE;
+            wait until tb_pwm_sig = '0' for pulse_us_was * 1 us + C_TLRNCE;
+
+            -- check for reset
+            if tb_rst_n = '0' then
+                next resp_loop; -- restart loop
+            end if;
+
+            ----------------------------------------------------------------
+            -- Verify Pulse Width
+            ----------------------------------------------------------------
             t_end   := now;
             t_width := t_end - t_start;
 
             -- pass
-            if t_width >= t_us - C_TLRNCE and t_width <= t_us + C_TLRNCE then
+            if t_width >= pulse_us_was * 1 us - C_TLRNCE and t_width <= pulse_us_was * 1 us + C_TLRNCE then
                 AffirmIf(TRUE,
-                    "RANDOM: PASS - Signal stayed high for " &
+                    C_TESTNAME & ": PASS - pwm_sig high for " &
                     integer'image(t_width / 1 us) &
-                    " when pulse_us = " &
-                    integer'image(t_us / 1 us)
+                    " when pulse_us was " &
+                    integer'image(pulse_us_was)
                 );
                 pass := pass + 1;
 
             -- short
-            elsif t_width < t_us - C_TLRNCE then
-                AffirmIf(FALSE, "RANDOM: FAIL - Short, Signal stayed high for incorrect duration " 
+            elsif t_width < pulse_us_was * 1 us - C_TLRNCE then
+                AffirmIf(FALSE, C_TESTNAME & ": FAIL - Short, pwm_sig high for " 
                     & integer'image((t_end - t_start) / 1 us) & 
-                    " us when pulse_us = " & integer'image(t_us / 1 us) & 
-                    " us, gap = " & 
-                    integer'image((t_us - t_width) / 1 us)
+                    " us when pulse_us was " & integer'image(pulse_us_was) & 
+                    " us, gap=" & 
+                    integer'image((pulse_us_was * 1 us - t_width) / 1 us)
                 );
                 short   := short + 1;
                 fail    := fail + 1;
 
             -- long
-            elsif t_width > t_us + C_TLRNCE then
-                AffirmIf(FALSE, "RANDOM: FAIL - Long, Signal stayed high for incorrect duration " & 
+            elsif t_width > pulse_us_was * 1 us + C_TLRNCE then
+                AffirmIf(FALSE, C_TESTNAME & ": FAIL - Long, pwm_sig high for " & 
                     integer'image((t_end - t_start) / 1 us) & 
-                    " when pulse_us = " & 
-                    integer'image(t_us / 1 us) & 
-                    ", gap = " & 
-                    integer'image((t_us - t_width) / 1 us)
+                    " when pulse_us was " & integer'image(pulse_us_was) & 
+                    " us, gap=" & 
+                    integer'image((pulse_us_was * 1 us - t_width) / 1 us)
                 );
                 long := long + 1;
                 fail := fail + 1;
@@ -208,8 +226,11 @@ begin
 
         end loop;
 
+        ----------------------------------------------------------------
+        -- Print Test Results
+        ----------------------------------------------------------------
         wait for 1 ms;
-        Log("RESULTS: pass: " & integer'image(pass) &
+        Log(C_TESTNAME & ": RESULTS - pass: " & integer'image(pass) &
         ", fail: " & integer'image(fail) &
         ", short: " & integer'image(short) &
         ", long: " & integer'image(long) &
