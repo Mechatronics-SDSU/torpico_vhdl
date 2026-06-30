@@ -47,8 +47,8 @@ end entity;
 
 architecture rtl of pwm_gen is
     -- constants
-    constant C_CLKS_PER_US  : integer := G_CLK_HZ / 10**6;          -- pulse width adjustment to cycles
-    constant C_PRD_CLKS     : integer := G_CLK_HZ / G_OUTPUT_HZ;    -- output period in clks
+    constant C_CLKS_PER_US  : integer range 0 to integer'high := G_CLK_HZ / 10**6;          -- pulse width adjustment to cycles
+    constant C_PRD_CLKS     : integer range 0 to integer'high := G_CLK_HZ / G_OUTPUT_HZ;    -- output period in clks
 
     -- states
     type state_type is (
@@ -56,13 +56,13 @@ architecture rtl of pwm_gen is
         S_HIGH,     -- signal high for limited duration
         S_LOW       -- signal low for correct amount to ensure square wave matches output Hz generic
         );
-    signal state : state_type       := S_PASSIVE; -- state tracking signal, initialized to passive for binary operation
-    signal next_state : state_type  := S_PASSIVE; -- next state used for transitions
+    signal state        : state_type := S_PASSIVE; -- state tracking signal, initialized to passive for binary operation
+    signal next_state   : state_type := S_PASSIVE; -- next state used for transitions
 
     -- signals
-    signal clk_cnt          : integer   := 0;   -- clock counter
-    signal pulse_clk_cnt    : integer   := 0;   -- max clock count during pulse
-    signal max_clk_cnt      : integer   := 0;   -- max clock count for period
+    signal clk_cnt          : integer range 0 to C_PRD_CLKS := 0;   -- clock counter
+    signal pulse_clk_cnt    : integer range 0 to C_PRD_CLKS := 1;   -- max clock count during pulse
+    signal max_clk_cnt      : integer range 0 to C_PRD_CLKS := 1;   -- max clock count for period
     signal pwm_sig_buf      : std_logic := '0'; -- output buffer
     signal stop_flag        : std_logic := '0'; -- stop flag
 
@@ -74,9 +74,10 @@ begin
         ----------------------------------------------------------------------------------
         if rst_n = '0' then
             state           <= S_PASSIVE;   -- reset state
+            next_state      <= S_PASSIVE;   -- reset next state
             clk_cnt         <= 0;           -- keep clk at 0
-            pulse_clk_cnt   <= 0;           -- reset pulse clk cnt
-            max_clk_cnt     <= 0;           -- reset max clk cnt
+            pulse_clk_cnt   <= 1;           -- reset pulse clk cnt
+            max_clk_cnt     <= 1;           -- reset max clk cnt
             pwm_sig_buf     <= '0';         -- reset output buffer
             stop_flag       <= '0';         -- reset stop flag
 
@@ -111,10 +112,10 @@ begin
             case state is
                 -- only pass 1/0 if input is 1/0, else transition to low
                 when S_PASSIVE =>
-                    if unsigned(pulse_us) <= 1 and stop_flag = '0' then
+                    if to_integer(unsigned(pulse_us)) < 2 and stop_flag = '0' then
                         pwm_sig_buf <= pulse_us(0); -- output 1 or 0 if input is 1 or 0
                     else
-                        state <= S_LOW;
+                        state <= S_LOW; -- otherwise transition to low state
                     end if;
 
                 -- signal high state
@@ -136,9 +137,6 @@ begin
         end if;
     end process;
 
-
-
     -- assign output to buffer
     pwm_sig <= pwm_sig_buf;
-
 end architecture;
