@@ -64,7 +64,7 @@ architecture rtl of pwm_gen is
     signal pulse_clk_cnt    : integer range 0 to C_PRD_CLKS := 1;   -- max clock count during pulse
     signal max_clk_cnt      : integer range 0 to C_PRD_CLKS := 1;   -- max clock count for period
     signal pwm_sig_buf      : std_logic := '0'; -- output buffer
-    signal stop_flag        : std_logic := '0'; -- stop flag
+    --signal stop_flag        : std_logic := '0'; -- stop flag
 
 begin
     process(pl_clk, rst_n)
@@ -79,16 +79,16 @@ begin
             pulse_clk_cnt   <= 1;           -- reset pulse clk cnt
             max_clk_cnt     <= 1;           -- reset max clk cnt
             pwm_sig_buf     <= '0';         -- reset output buffer
-            stop_flag       <= '0';         -- reset stop flag
+            --signal stop_flag        : std_logic := '0'; -- stop flag
 
         ----------------------------------------------------------------------------------
         -- CLOCK LOOP
         ----------------------------------------------------------------------------------
         elsif rising_edge(pl_clk) then
             -- set stop flag high after stop signal high
-            if stop_sig = '1' then
-                stop_flag <= '1';
-            end if;
+            -- if stop_sig = '1' then
+            --     stop_flag <= '1';
+            -- end if;
             
             -- clock counter logic
             if clk_cnt < max_clk_cnt then
@@ -100,7 +100,7 @@ begin
 
                 -- assign pulse clock count to either stop us or pulse us
                 if state = S_LOW then
-                    if stop_flag = '1' then
+                    if stop_sig = '1' then
                         pulse_clk_cnt <= G_STOP_US * C_CLKS_PER_US; -- set pulse clk cnt to stop us
                     else
                         pulse_clk_cnt <= to_integer(unsigned(pulse_us)) * C_CLKS_PER_US; -- set pulse clk cnt from pulse_us
@@ -112,7 +112,7 @@ begin
             case state is
                 -- only pass 1/0 if input is 1/0, else transition to low
                 when S_PASSIVE =>
-                    if to_integer(unsigned(pulse_us)) < 2 and stop_flag = '0' then
+                    if to_integer(unsigned(pulse_us)) < 2 and stop_sig = '0' then
                         pwm_sig_buf <= pulse_us(0); -- output 1 or 0 if input is 1 or 0
                     else
                         state <= S_LOW; -- otherwise transition to low state
